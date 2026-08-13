@@ -10,11 +10,11 @@ class TicketPDFRequest(BaseModel):
 
     flight_number: str
 
-    departure_code: str
-    departure_city: str
+    departure_country: str
+    departure_airport: str
 
-    arrival_code: str
-    arrival_city: str
+    arrival_country: str
+    arrival_airport: str
 
     departure_time: datetime
     arrival_time: datetime

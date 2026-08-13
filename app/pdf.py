@@ -7,6 +7,42 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 
 
+def draw_text_fit(
+    pdf,
+    text,
+    x,
+    y,
+    max_width,
+    font_name="Helvetica-Bold",
+    max_font_size=16,
+    min_font_size=7,
+    color=colors.black,
+):
+    """
+    Малює текст із автоматичним зменшенням шрифту,
+    якщо текст не поміщається у задану ширину.
+    """
+
+    text = str(text)
+
+    font_size = max_font_size
+
+    while (
+        font_size > min_font_size
+        and pdf.stringWidth(text, font_name, font_size) > max_width
+    ):
+        font_size -= 1
+
+    pdf.setFillColor(color)
+    pdf.setFont(font_name, font_size)
+
+    pdf.drawString(
+        x,
+        y,
+        text,
+    )
+
+
 def generate_ticket_pdf(data) -> BytesIO:
     # ---------------------------------------------------------
     # Boarding pass
@@ -35,11 +71,11 @@ def generate_ticket_pdf(data) -> BytesIO:
     # Data
     # ---------------------------------------------------------
 
-    departure_code = data.departure_code
-    arrival_code = data.arrival_code
+    departure_country = data.departure_country
+    arrival_country = data.arrival_country
 
-    departure_city = data.departure_city
-    arrival_city = data.arrival_city
+    departure_airport = data.departure_airport
+    arrival_airport = data.arrival_airport
 
     passenger_name = data.passenger_name
     flight_number = data.flight_number
@@ -47,7 +83,7 @@ def generate_ticket_pdf(data) -> BytesIO:
     airline = data.airline
 
     # ---------------------------------------------------------
-    # Фон
+    # Background
     # ---------------------------------------------------------
 
     pdf.setFillColor(colors.white)
@@ -63,7 +99,7 @@ def generate_ticket_pdf(data) -> BytesIO:
     )
 
     # ---------------------------------------------------------
-    # Верхня фіолетова частина
+    # Upper purple part
     # ---------------------------------------------------------
 
     pdf.setFillColor(purple)
@@ -78,7 +114,7 @@ def generate_ticket_pdf(data) -> BytesIO:
         stroke=0,
     )
 
-    # Закриваємо нижню частину заокруглення
+    # Close the bottom part of the curve
 
     pdf.rect(
         10,
@@ -90,7 +126,7 @@ def generate_ticket_pdf(data) -> BytesIO:
     )
 
     # ---------------------------------------------------------
-    # Заголовок
+    # Title
     # ---------------------------------------------------------
 
     pdf.setFillColor(colors.white)
@@ -109,7 +145,7 @@ def generate_ticket_pdf(data) -> BytesIO:
     )
 
     # ---------------------------------------------------------
-    # Вертикальна лінія перед відривною частиною
+    # Vertical line before the tear-off section
     # ---------------------------------------------------------
 
     separator_x = 570
@@ -139,22 +175,28 @@ def generate_ticket_pdf(data) -> BytesIO:
         "FROM:",
     )
 
-    pdf.setFillColor(purple)
-    pdf.setFont("Helvetica-Bold", 38)
-
-    pdf.drawString(
-        45,
-        165,
-        departure_code,
+    # Country
+    draw_text_fit(
+        pdf,
+        departure_country,
+        x=45,
+        y=165,
+        max_width=190,
+        max_font_size=38,
+        min_font_size=16,
+        color=purple,
     )
 
-    pdf.setFillColor(dark)
-    pdf.setFont("Helvetica-Bold", 16)
-
-    pdf.drawString(
-        45,
-        145,
-        departure_city.upper(),
+    # Airport
+    draw_text_fit(
+        pdf,
+        departure_airport.upper(),
+        x=45,
+        y=145,
+        max_width=190,
+        max_font_size=16,
+        min_font_size=8,
+        color=dark,
     )
 
     # ---------------------------------------------------------
@@ -170,26 +212,32 @@ def generate_ticket_pdf(data) -> BytesIO:
         "TO:",
     )
 
-    pdf.setFillColor(purple)
-    pdf.setFont("Helvetica-Bold", 38)
-
-    pdf.drawString(
-        300,
-        165,
-        arrival_code,
+    # Country
+    draw_text_fit(
+        pdf,
+        arrival_country,
+        x=300,
+        y=165,
+        max_width=140,
+        max_font_size=38,
+        min_font_size=16,
+        color=purple,
     )
 
-    pdf.setFillColor(dark)
-    pdf.setFont("Helvetica-Bold", 16)
-
-    pdf.drawString(
-        300,
-        145,
-        arrival_city.upper(),
+    # Airport
+    draw_text_fit(
+        pdf,
+        arrival_airport.upper(),
+        x=300,
+        y=145,
+        max_width=140,
+        max_font_size=16,
+        min_font_size=8,
+        color=dark,
     )
 
     # ---------------------------------------------------------
-    # Літак між містами
+    # Airplane between cities
     # ---------------------------------------------------------
 
     pdf.setFillColor(purple)
@@ -202,7 +250,7 @@ def generate_ticket_pdf(data) -> BytesIO:
     )
 
     # ---------------------------------------------------------
-    # Дата / час
+    # Data / time
     # ---------------------------------------------------------
 
     pdf.setFillColor(dark)
@@ -233,7 +281,7 @@ def generate_ticket_pdf(data) -> BytesIO:
     )
 
     # ---------------------------------------------------------
-    # Дані пасажира
+    # PASSENGER DATA
     # ---------------------------------------------------------
 
     y_label = 75
@@ -244,25 +292,29 @@ def generate_ticket_pdf(data) -> BytesIO:
             "PASSENGER NAME",
             passenger_name,
             45,
+            190,
         ),
         (
             "FLIGHT",
             flight_number,
             250,
+            80,
         ),
         (
             "SEAT",
             seat_number,
             345,
+            50,
         ),
         (
             "AIRLINE",
             airline,
             410,
+            140,
         ),
     ]
 
-    for label, value, x in columns:
+    for label, value, x, max_width in columns:
 
         pdf.setFillColor(gray)
         pdf.setFont("Helvetica-Bold", 7)
@@ -273,13 +325,16 @@ def generate_ticket_pdf(data) -> BytesIO:
             label,
         )
 
-        pdf.setFillColor(dark)
-        pdf.setFont("Helvetica-Bold", 11)
-
-        pdf.drawString(
-            x,
-            y_value,
-            str(value),
+        draw_text_fit(
+            pdf,
+            value,
+            x=x,
+            y=y_value,
+            max_width=max_width,
+            font_name="Helvetica-Bold",
+            max_font_size=11,
+            min_font_size=6,
+            color=dark,
         )
 
     # ---------------------------------------------------------
@@ -319,7 +374,7 @@ def generate_ticket_pdf(data) -> BytesIO:
     qr_reader = ImageReader(qr_buffer)
 
     # ---------------------------------------------------------
-    # Основний QR
+    # Main QR
     # ---------------------------------------------------------
 
     pdf.drawImage(
@@ -334,7 +389,7 @@ def generate_ticket_pdf(data) -> BytesIO:
     )
 
     # ---------------------------------------------------------
-    # Відривна частина
+    # Tear-off section
     # ---------------------------------------------------------
 
     pdf.setFillColor(gray)
@@ -353,26 +408,37 @@ def generate_ticket_pdf(data) -> BytesIO:
     )
 
     # ---------------------------------------------------------
-    # Коди аеропортів
+    # Departure country
     # ---------------------------------------------------------
 
-    pdf.setFillColor(purple)
-    pdf.setFont("Helvetica-Bold", 24)
-
-    pdf.drawString(
-        590,
-        180,
-        departure_code,
-    )
-
-    pdf.drawString(
-        590,
-        125,
-        arrival_code,
+    draw_text_fit(
+        pdf,
+        departure_country,
+        x=590,
+        y=180,
+        max_width=65,
+        max_font_size=24,
+        min_font_size=8,
+        color=purple,
     )
 
     # ---------------------------------------------------------
-    # Пасажир
+    # Arrival country
+    # ---------------------------------------------------------
+
+    draw_text_fit(
+        pdf,
+        arrival_country,
+        x=590,
+        y=125,
+        max_width=65,
+        max_font_size=24,
+        min_font_size=8,
+        color=purple,
+    )
+
+    # ---------------------------------------------------------
+    # Passenger
     # ---------------------------------------------------------
 
     pdf.setFillColor(gray)
@@ -384,25 +450,16 @@ def generate_ticket_pdf(data) -> BytesIO:
         "PASSENGER NAME",
     )
 
-    pdf.setFillColor(dark)
-    pdf.setFont("Helvetica-Bold", 10)
-
-    # Якщо ім'я довге — трохи зменшуємо шрифт
-
-    passenger_font_size = 10
-
-    if len(passenger_name) > 20:
-        passenger_font_size = 8
-
-    pdf.setFont(
-        "Helvetica-Bold",
-        passenger_font_size,
-    )
-
-    pdf.drawString(
-        590,
-        70,
+    draw_text_fit(
+        pdf,
         passenger_name,
+        x=590,
+        y=70,
+        max_width=105,
+        font_name="Helvetica-Bold",
+        max_font_size=10,
+        min_font_size=6,
+        color=dark,
     )
 
     # ---------------------------------------------------------
@@ -414,15 +471,17 @@ def generate_ticket_pdf(data) -> BytesIO:
             "SEAT",
             seat_number,
             590,
+            45,
         ),
         (
             "AIRLINE",
             airline,
             650,
+            45,
         ),
     ]
 
-    for label, value, x in small_data:
+    for label, value, x, max_width in small_data:
 
         pdf.setFillColor(gray)
         pdf.setFont("Helvetica-Bold", 6)
@@ -433,29 +492,20 @@ def generate_ticket_pdf(data) -> BytesIO:
             label,
         )
 
-        pdf.setFillColor(dark)
-
-        # Для airline використовуємо менший шрифт,
-        # якщо назва довга
-
-        value_font_size = 9
-
-        if label == "AIRLINE" and len(str(value)) > 10:
-            value_font_size = 7
-
-        pdf.setFont(
-            "Helvetica-Bold",
-            value_font_size,
-        )
-
-        pdf.drawString(
-            x,
-            30,
-            str(value),
+        draw_text_fit(
+            pdf,
+            value,
+            x=x,
+            y=30,
+            max_width=max_width,
+            font_name="Helvetica-Bold",
+            max_font_size=9,
+            min_font_size=5,
+            color=dark,
         )
 
     # ---------------------------------------------------------
-    # QR на відривній частині
+    # QR code on the tear-off section
     # ---------------------------------------------------------
 
     pdf.drawImage(
@@ -470,7 +520,7 @@ def generate_ticket_pdf(data) -> BytesIO:
     )
 
     # ---------------------------------------------------------
-    # Завершення PDF
+    # End PDF
     # ---------------------------------------------------------
 
     pdf.showPage()
